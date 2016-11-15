@@ -66,10 +66,10 @@ result_t verify_cert(struct tls_session *session, openvpn_x509_cert_t *cert, int
  *
  * @param session	TLS Session associated with this tunnel
  * @param cert_depth	Depth of the current certificate
- * @param sha1_hash	Hash of the current certificate
+ * @param cert_hash	Hash of the current certificate
  */
 void cert_hash_remember (struct tls_session *session, const int cert_depth,
-    const unsigned char *sha1_hash);
+    const struct buffer *cert_hash);
 
 /*
  * Library-specific functions.
@@ -87,14 +87,27 @@ void cert_hash_remember (struct tls_session *session, const int cert_depth,
  */
 char *x509_get_subject (openvpn_x509_cert_t *cert, struct gc_arena *gc);
 
-/* Retrieve the certificate's SHA1 hash.
+/**
+ * Retrieve the certificate's SHA1 fingerprint.
  *
- * @param cert		Certificate to retrieve the hash from.
+ * @param cert		Certificate to retrieve the fingerprint from.
  * @param gc		Garbage collection arena to use when allocating string.
  *
- * @return 		a string containing the SHA1 hash of the certificate
+ * @return 		a string containing the certificate fingerprint
  */
-unsigned char *x509_get_sha1_hash (openvpn_x509_cert_t *cert, struct gc_arena *gc);
+struct buffer x509_get_sha1_fingerprint (openvpn_x509_cert_t *cert,
+    struct gc_arena *gc);
+
+/**
+ * Retrieve the certificate's SHA256 fingerprint.
+ *
+ * @param cert		Certificate to retrieve the fingerprint from.
+ * @param gc		Garbage collection arena to use when allocating string.
+ *
+ * @return 		a string containing the certificate fingerprint
+ */
+struct buffer x509_get_sha256_fingerprint (openvpn_x509_cert_t *cert,
+    struct gc_arena *gc);
 
 /*
  * Retrieve the certificate's username from the specified field.
@@ -109,20 +122,35 @@ unsigned char *x509_get_sha1_hash (openvpn_x509_cert_t *cert, struct gc_arena *g
  *
  * @return 		\c FAILURE, \c or SUCCESS
  */
-result_t x509_get_username (char *common_name, int cn_len,
+result_t backend_x509_get_username (char *common_name, int cn_len,
     char * x509_username_field, openvpn_x509_cert_t *peer_cert);
 
 /*
- * Return the certificate's serial number.
+ * Return the certificate's serial number in decimal string representation.
  *
  * The serial number is returned as a string, since it might be a bignum.
  *
  * @param cert		Certificate to retrieve the serial number from.
  * @param gc		Garbage collection arena to use when allocating string.
  *
- * @return 		The certificate's serial number.
+ * @return 		String representation of the certificate's serial number
+ * 			in decimal notation, or NULL on error.
  */
-char *x509_get_serial (openvpn_x509_cert_t *cert, struct gc_arena *gc);
+char *backend_x509_get_serial (openvpn_x509_cert_t *cert, struct gc_arena *gc);
+
+/*
+ * Return the certificate's serial number in hex string representation.
+ *
+ * The serial number is returned as a string, since it might be a bignum.
+ *
+ * @param cert		Certificate to retrieve the serial number from.
+ * @param gc		Garbage collection arena to use when allocating string.
+ *
+ * @return 		String representation of the certificate's serial number
+ * 			in hex notation, or NULL on error.
+ */
+char *backend_x509_get_serial_hex (openvpn_x509_cert_t *cert,
+    struct gc_arena *gc);
 
 /*
  * Save X509 fields to environment, using the naming convention:
@@ -134,8 +162,6 @@ char *x509_get_serial (openvpn_x509_cert_t *cert, struct gc_arena *gc);
  * @param cert		Certificate to set the environment for
  */
 void x509_setenv (struct env_set *es, int cert_depth, openvpn_x509_cert_t *cert);
-
-#ifdef ENABLE_X509_TRACK
 
 /*
  * Start tracking the given attribute.
@@ -174,8 +200,6 @@ void x509_track_add (const struct x509_track **ll_head, const char *name,
 void x509_setenv_track (const struct x509_track *xt, struct env_set *es,
     const int depth, openvpn_x509_cert_t *x509);
 
-#endif
-
 /*
  * Check X.509 Netscape certificate type field, if available.
  *
@@ -188,8 +212,6 @@ void x509_setenv_track (const struct x509_track *xt, struct env_set *es,
  * 			not have NS cert type verification or the wrong bit set.
  */
 result_t x509_verify_ns_cert_type(const openvpn_x509_cert_t *cert, const int usage);
-
-#if OPENSSL_VERSION_NUMBER >= 0x00907000L || ENABLE_CRYPTO_POLARSSL
 
 /*
  * Verify X.509 key usage extension field.
@@ -219,8 +241,6 @@ result_t x509_verify_cert_ku (openvpn_x509_cert_t *x509, const unsigned * const 
  */
 result_t x509_verify_cert_eku (openvpn_x509_cert_t *x509, const char * const expected_oid);
 
-#endif
-
 /*
  * Store the given certificate in pem format in a temporary file in tmp_dir
  *
@@ -237,13 +257,14 @@ result_t x509_write_pem(FILE *peercert_file, openvpn_x509_cert_t *peercert);
  *
  * @param crl_file	File name of the CRL file
  * @param cert		Certificate to verify
+ * @param crl_inline	Contents of the crl file if it is inlined
  * @param subject	Subject of the given certificate
  *
  * @return 		\c SUCCESS if the CRL was not signed by the issuer of the
  * 			certificate or does not contain an entry for it.
  * 			\c FAILURE otherwise.
  */
-result_t x509_verify_crl(const char *crl_file, openvpn_x509_cert_t *cert,
-    const char *subject);
+result_t x509_verify_crl(const char *crl_file, const char *crl_inline,
+                         openvpn_x509_cert_t *cert, const char *subject);
 
 #endif /* SSL_VERIFY_BACKEND_H_ */

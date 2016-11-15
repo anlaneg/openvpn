@@ -254,7 +254,7 @@ buf_puts(struct buffer *buf, const char *str)
  *
  * Return false on overflow.
  *
- * This function is duplicated into service-win32/openvpnserv.c
+ * This functionality is duplicated in src/openvpnserv/common.c
  * Any modifications here should be done to the other place as well.
  */
 
@@ -327,19 +327,28 @@ gc_malloc (size_t size, bool clear, struct gc_arena *a)
 #endif
 {
   void *ret;
-  struct gc_entry *e;
-  ASSERT (NULL != a);
-
+  if (a)
+    {
+      struct gc_entry *e;
 #ifdef DMALLOC
-  e = (struct gc_entry *) openvpn_dmalloc (file, line, size + sizeof (struct gc_entry));
+      e = (struct gc_entry *) openvpn_dmalloc (file, line, size + sizeof (struct gc_entry));
 #else
-  e = (struct gc_entry *) malloc (size + sizeof (struct gc_entry));
+      e = (struct gc_entry *) malloc (size + sizeof (struct gc_entry));
 #endif
-  check_malloc_return (e);
-  ret = (char *) e + sizeof (struct gc_entry);
-  e->next = a->list;
-  a->list = e;
-
+      check_malloc_return (e);
+      ret = (char *) e + sizeof (struct gc_entry);
+      e->next = a->list;
+      a->list = e;
+    }
+  else
+    {
+#ifdef DMALLOC
+      ret = openvpn_dmalloc (file, line, size);
+#else
+      ret = malloc (size);
+#endif
+      check_malloc_return (ret);
+    }
 #ifndef ZERO_BUFFER_ON_ALLOC
   if (clear)
 #endif
@@ -361,6 +370,44 @@ x_gc_free (struct gc_arena *a)
       e = next;
     }
 }
+
+/*
+ * Functions to handle special objects in gc_entries
+ */
+
+void
+x_gc_freespecial (struct gc_arena *a)
+{
+  struct gc_entry_special *e;
+  e = a->list_special;
+  a->list_special = NULL;
+
+  while (e != NULL)
+    {
+      struct gc_entry_special *next = e->next;
+      e->free_fnc (e->addr);
+      free(e);
+      e = next;
+    }
+}
+
+void gc_addspecial (void *addr, void (free_function)(void*), struct gc_arena *a)
+{
+  ASSERT(a);
+  struct gc_entry_special *e;
+#ifdef DMALLOC
+  e = (struct gc_entry_special *) openvpn_dmalloc (file, line, sizeof (struct gc_entry_special));
+#else
+  e = (struct gc_entry_special *) malloc (sizeof (struct gc_entry_special));
+#endif
+  check_malloc_return (e);
+  e->free_fnc = free_function;
+  e->addr = addr;
+
+  e->next = a->list_special;
+  a->list_special = e;
+}
+
 
 /*
  * Transfer src arena to dest, resetting src to an empty arena.
@@ -388,18 +435,21 @@ gc_transfer (struct gc_arena *dest, struct gc_arena *src)
 
 char *
 format_hex_ex (const uint8_t *data, int size, int maxoutput,
-	       int space_break, const char* separator,
+	       unsigned int space_break_flags, const char* separator,
 	       struct gc_arena *gc)
 {
   struct buffer out = alloc_buf_gc (maxoutput ? maxoutput :
-				    ((size * 2) + (size / space_break) * (int) strlen (separator) + 2),
+				    ((size * 2) + (size / (space_break_flags & FHE_SPACE_BREAK_MASK)) * (int) strlen (separator) + 2),
 				    gc);
   int i;
   for (i = 0; i < size; ++i)
     {
-      if (separator && i && !(i % space_break))
+      if (separator && i && !(i % (space_break_flags & FHE_SPACE_BREAK_MASK)))
 	buf_printf (&out, "%s", separator);
-      buf_printf (&out, "%02x", data[i]);
+      if (space_break_flags & FHE_CAPS)
+	buf_printf (&out, "%02X", data[i]);
+      else
+	buf_printf (&out, "%02x", data[i]);
     }
   buf_catrunc (&out, "[more...]");
   return (char *)out.data;
@@ -929,9 +979,6 @@ valign4 (const struct buffer *buf, const char *file, const int line)
 /*
  * struct buffer_list
  */
-
-#ifdef ENABLE_BUFFER_LIST
-
 struct buffer_list *
 buffer_list_new (const int max_size)
 {
@@ -1022,8 +1069,10 @@ buffer_list_peek (struct buffer_list *ol)
 }
 
 void
-buffer_list_aggregate (struct buffer_list *bl, const size_t max)
+buffer_list_aggregate_separator (struct buffer_list *bl, const size_t max, const char *sep)
 {
+  int sep_len = strlen(sep);
+
   if (bl->head)
     {
       struct buffer_entry *more = bl->head;
@@ -1031,7 +1080,7 @@ buffer_list_aggregate (struct buffer_list *bl, const size_t max)
       int count = 0;
       for (count = 0; more && size <= max; ++count)
 	{
-	  size += BLEN(&more->buf);
+	  size += BLEN(&more->buf) + sep_len;
 	  more = more->next;
 	}
 
@@ -1048,6 +1097,7 @@ buffer_list_aggregate (struct buffer_list *bl, const size_t max)
 	    {
 	      struct buffer_entry *next = e->next;
 	      buf_copy (&f->buf, &e->buf);
+	      buf_write(&f->buf, sep, sep_len);
 	      free_buf (&e->buf);
 	      free (e);
 	      e = next;
@@ -1058,6 +1108,12 @@ buffer_list_aggregate (struct buffer_list *bl, const size_t max)
 	    bl->tail = f;
 	}
     }
+}
+
+void
+buffer_list_aggregate (struct buffer_list *bl, const size_t max)
+{
+  buffer_list_aggregate_separator(bl, max, "");
 }
 
 void
@@ -1107,5 +1163,3 @@ buffer_list_file (const char *fn, int max_line_len)
     }
   return bl;
 }
-
-#endif

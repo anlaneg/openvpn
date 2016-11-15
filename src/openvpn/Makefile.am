@@ -18,7 +18,7 @@ EXTRA_DIST = \
 	openvpn.vcxproj \
 	openvpn.vcxproj.filters
 
-INCLUDES = \
+AM_CPPFLAGS = \
 	-I$(top_srcdir)/include \
 	-I$(top_srcdir)/src/compat
 
@@ -26,7 +26,7 @@ AM_CFLAGS = \
 	$(TAP_CFLAGS) \
 	$(OPTIONAL_CRYPTO_CFLAGS) \
 	$(OPTIONAL_LZO_CFLAGS) \
-	$(OPTIONAL_SNAPPY_CFLAGS) \
+	$(OPTIONAL_LZ4_CFLAGS) \
 	$(OPTIONAL_PKCS11_HELPER_CFLAGS)
 if WIN32
 # we want unicode entry point but not the macro
@@ -36,6 +36,7 @@ endif
 sbin_PROGRAMS = openvpn
 
 openvpn_SOURCES = \
+	argv.c argv.h \
 	base64.c base64.h \
 	basic.h \
 	buffer.c buffer.h \
@@ -43,9 +44,10 @@ openvpn_SOURCES = \
 	clinat.c clinat.h \
 	common.h \
 	comp.c comp.h compstub.c \
+	comp-lz4.c comp-lz4.h \
 	crypto.c crypto.h crypto_backend.h \
 	crypto_openssl.c crypto_openssl.h \
-	crypto_polarssl.c crypto_polarssl.h \
+	crypto_mbedtls.c crypto_mbedtls.h \
 	dhcp.c dhcp.h \
 	errlevel.h \
 	error.c error.h \
@@ -67,7 +69,7 @@ openvpn_SOURCES = \
 	memdbg.h \
 	misc.c misc.h \
 	platform.c platform.h \
-	console.c console.h \
+	console.c console.h console_builtin.c console_systemd.c \
 	mroute.c mroute.h \
 	mss.c mss.h \
 	mstats.c mstats.h \
@@ -79,7 +81,7 @@ openvpn_SOURCES = \
 	occ.c occ.h occ-inline.h \
 	pkcs11.c pkcs11.h pkcs11_backend.h \
 	pkcs11_openssl.c \
-	pkcs11_polarssl.c \
+	pkcs11_mbedtls.c \
 	openvpn.c openvpn.h \
 	options.c options.h \
 	otime.c otime.h \
@@ -100,16 +102,15 @@ openvpn_SOURCES = \
 	session_id.c session_id.h \
 	shaper.c shaper.h \
 	sig.c sig.h \
-	snappy.c snappy.h \
 	socket.c socket.h \
 	socks.c socks.h \
 	ssl.c ssl.h  ssl_backend.h \
 	ssl_openssl.c ssl_openssl.h \
-	ssl_polarssl.c ssl_polarssl.h \
+	ssl_mbedtls.c ssl_mbedtls.h \
 	ssl_common.h \
 	ssl_verify.c ssl_verify.h ssl_verify_backend.h \
 	ssl_verify_openssl.c ssl_verify_openssl.h \
-	ssl_verify_polarssl.c ssl_verify_polarssl.h \
+	ssl_verify_mbedtls.c ssl_verify_mbedtls.h \
 	status.c status.h \
 	syshead.h \
 	tun.c tun.h \
@@ -119,12 +120,13 @@ openvpn_LDADD = \
 	$(top_builddir)/src/compat/libcompat.la \
 	$(SOCKETS_LIBS) \
 	$(OPTIONAL_LZO_LIBS) \
-	$(OPTIONAL_SNAPPY_LIBS) \
+	$(OPTIONAL_LZ4_LIBS) \
 	$(OPTIONAL_PKCS11_HELPER_LIBS) \
 	$(OPTIONAL_CRYPTO_LIBS) \
 	$(OPTIONAL_SELINUX_LIBS) \
+	$(OPTIONAL_SYSTEMD_LIBS) \
 	$(OPTIONAL_DL_LIBS)
 if WIN32
-openvpn_SOURCES += openvpn_win32_resources.rc
-openvpn_LDADD += -lgdi32 -lws2_32 -lwininet -lcrypt32 -liphlpapi -lwinmm
+openvpn_SOURCES += openvpn_win32_resources.rc block_dns.c block_dns.h
+openvpn_LDADD += -lgdi32 -lws2_32 -lwininet -lcrypt32 -liphlpapi -lwinmm -lfwpuclnt -lrpcrt4
 endif

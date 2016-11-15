@@ -336,11 +336,6 @@ pkcs11_terminate () {
 	);
 }
 
-void
-pkcs11_forkFixup () {
-	pkcs11h_forkFixup ();
-}
-
 bool
 pkcs11_addProvider (
 	const char * const provider,
@@ -749,9 +744,10 @@ _pkcs11_openvpn_show_pkcs11_ids_pin_prompt (
 	ASSERT (token!=NULL);
 
 	buf_printf (&pass_prompt, "Please enter '%s' token PIN or 'cancel': ", token->display);
-
-	if (!get_console_input (BSTR (&pass_prompt), false, pin, pin_max)) {
-		msg (M_FATAL, "Cannot read password from stdin");
+	if (!query_user_SINGLE(BSTR(&pass_prompt), BLEN(&pass_prompt),
+		       pin, pin_max, false))
+	{
+	    msg (M_FATAL, "Could not retrieve the PIN");
 	}
 
 	gc_free (&gc);

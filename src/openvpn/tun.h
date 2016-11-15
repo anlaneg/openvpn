@@ -58,6 +58,10 @@ struct tuntap_options {
 # define IPW32_SET_N            5
   int ip_win32_type;
 
+#ifdef WIN32
+  HANDLE msg_channel;
+#endif
+
   /* --ip-win32 dynamic options */
   bool dhcp_masq_custom_offset;
   int dhcp_masq_offset;
@@ -134,8 +138,6 @@ struct tuntap
   bool did_ifconfig_setup;
   bool did_ifconfig_ipv6_setup;
   bool did_ifconfig;
-
-  bool ipv6;
 
   bool persistent_if;		/* if existed before, keep on program end */
 
@@ -232,14 +234,17 @@ struct tuntap *init_tun (const char *dev,       /* --dev option */
 			 const char *ifconfig_ipv6_local_parm,     /* --ifconfig parm 1 / IPv6 */
 			 int ifconfig_ipv6_netbits_parm,           /* --ifconfig parm 1 / bits */
 			 const char *ifconfig_ipv6_remote_parm,    /* --ifconfig parm 2 / IPv6 */
-			 in_addr_t local_public,
-			 in_addr_t remote_public,
+			 struct addrinfo *local_public,
+			 struct addrinfo *remote_public,
 			 const bool strict_warn,
 			 struct env_set *es);
 
 void init_tun_post (struct tuntap *tt,
 		    const struct frame *frame,
 		    const struct tuntap_options *options);
+
+void do_ifconfig_setenv (const struct tuntap *tt,
+		  struct env_set *es);
 
 void do_ifconfig (struct tuntap *tt,
 		  const char *actual,    /* actual device name */
@@ -294,7 +299,7 @@ ifconfig_order(void)
 #elif defined(TARGET_NETBSD)
   return IFCONFIG_AFTER_TUN_OPEN;
 #elif defined(WIN32)
-  return IFCONFIG_BEFORE_TUN_OPEN;
+  return IFCONFIG_AFTER_TUN_OPEN;
 #elif defined(TARGET_ANDROID)
   return IFCONFIG_BEFORE_TUN_OPEN;
 #else
@@ -391,6 +396,19 @@ tuntap_stop (int status)
   return false;
 }
 
+static inline bool
+tuntap_abort(int status)
+{
+  /*
+   * Typically generated when driver is halted.
+   */
+  if (status < 0)
+    {
+      return openvpn_errno() == ERROR_OPERATION_ABORTED;
+    }
+  return false;
+}
+
 static inline int
 tun_write_win32 (struct tuntap *tt, struct buffer *buf)
 {
@@ -428,6 +446,12 @@ write_tun_buffered (struct tuntap *tt, struct buffer *buf)
 
 static inline bool
 tuntap_stop (int status)
+{
+  return false;
+}
+
+static inline bool
+tuntap_abort(int status)
 {
   return false;
 }

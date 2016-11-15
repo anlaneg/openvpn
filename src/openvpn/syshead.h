@@ -45,6 +45,11 @@
 #define srandom srand
 #endif
 
+#ifdef _MSC_VER // Visual Studio
+#define __func__ __FUNCTION__
+#define __attribute__(x)
+#endif
+
 #if defined(__APPLE__)
 #if __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ >= 1070
 #define __APPLE_USE_RFC_3542  1
@@ -214,10 +219,6 @@
 
 #if defined(TARGET_LINUX) || defined (TARGET_ANDROID)
 
-#if defined(HAVE_NETINET_IF_ETHER_H)
-#include <netinet/if_ether.h>
-#endif
-
 #ifdef HAVE_LINUX_IF_TUN_H
 #include <linux/if_tun.h>
 #endif
@@ -349,9 +350,22 @@
 
 #endif /* TARGET_DRAGONFLY */
 
+#ifdef TARGET_DARWIN
+
+#ifdef HAVE_NETINET_TCP_H
+#include <netinet/tcp.h>
+#endif
+
+#endif /* TARGET_DARWIN */
+
 #ifdef WIN32
-#include <iphlpapi.h>
+ // Missing declarations for MinGW 32.
+ // #if !defined(__MINGW64_VERSION_MAJOR) || __MINGW64_VERSION_MAJOR < 2
+ typedef int MIB_TCP_STATE;
+ // #endif
+#include <naptypes.h>
 #include <ntddndis.h>
+#include <iphlpapi.h>
 #include <wininet.h>
 #include <shellapi.h>
 /* The following two headers are needed of PF_INET6 */
@@ -370,16 +384,13 @@
  * Pedantic mode is meant to accomplish lint-style program checking,
  * not to build a working executable.
  */
-#ifdef __STRICT_ANSI__
-# define PEDANTIC 1
+#ifdef PEDANTIC
 # undef HAVE_CPP_VARARG_MACRO_GCC
 # undef HAVE_CPP_VARARG_MACRO_ISO
 # undef EMPTY_ARRAY_SIZE
 # define EMPTY_ARRAY_SIZE 1
 # undef inline
 # define inline
-#else
-# define PEDANTIC 0
 #endif
 
 /*
@@ -423,6 +434,13 @@
  */
 #ifndef SOL_IP
 #define SOL_IP IPPROTO_IP
+#endif
+
+/*
+ * Define type sa_family_t if it isn't defined in the socket headers
+ */
+#ifndef HAVE_SA_FAMILY_T
+typedef unsigned short sa_family_t;
 #endif
 
 /*
@@ -502,7 +520,7 @@ socket_defined (const socket_descriptor_t sd)
  * Do we have point-to-multipoint capability?
  */
 
-#if defined(ENABLE_CLIENT_SERVER) && defined(ENABLE_CRYPTO) && defined(ENABLE_SSL) && defined(HAVE_GETTIMEOFDAY_NANOSECONDS)
+#if defined(ENABLE_CLIENT_SERVER) && defined(ENABLE_CRYPTO) && defined(HAVE_GETTIMEOFDAY_NANOSECONDS)
 #define P2MP 1
 #else
 #define P2MP 0
@@ -539,14 +557,14 @@ socket_defined (const socket_descriptor_t sd)
 /*
  * Enable external private key
  */
-#if defined(ENABLE_MANAGEMENT) && defined(ENABLE_SSL) && !defined(ENABLE_CRYPTO_POLARSSL)
+#if defined(ENABLE_MANAGEMENT) && defined(ENABLE_CRYPTO)
 #define MANAGMENT_EXTERNAL_KEY
 #endif
 
-/* Enable PolarSSL RNG prediction resistance support */
-#ifdef ENABLE_CRYPTO_POLARSSL
+/* Enable mbed TLS RNG prediction resistance support */
+#ifdef ENABLE_CRYPTO_MBEDTLS
 #define ENABLE_PREDICTION_RESISTANCE
-#endif /* ENABLE_CRYPTO_POLARSSL */
+#endif /* ENABLE_CRYPTO_MBEDTLS */
 
 /*
  * MANAGEMENT_IN_EXTRA allows the management interface to
@@ -579,11 +597,6 @@ socket_defined (const socket_descriptor_t sd)
 #endif
 
 /*
- * Compile the struct buffer_list code
- */
-#define ENABLE_BUFFER_LIST
-
-/*
  * Should we include OCC (options consistency check) code?
  */
 #ifndef ENABLE_SMALL
@@ -593,7 +606,7 @@ socket_defined (const socket_descriptor_t sd)
 /*
  * Should we include NTLM proxy functionality
  */
-#if defined(ENABLE_CRYPTO) && defined(ENABLE_HTTP_PROXY)
+#if defined(ENABLE_CRYPTO)
 #define NTLM 1
 #else
 #define NTLM 0
@@ -602,31 +615,17 @@ socket_defined (const socket_descriptor_t sd)
 /*
  * Should we include proxy digest auth functionality
  */
-#if defined(ENABLE_CRYPTO) && defined(ENABLE_HTTP_PROXY)
+#if defined(ENABLE_CRYPTO)
 #define PROXY_DIGEST_AUTH 1
 #else
 #define PROXY_DIGEST_AUTH 0
 #endif
 
 /*
- * Should we include code common to all proxy methods?
- */
-#if defined(ENABLE_HTTP_PROXY) || defined(ENABLE_SOCKS)
-#define GENERAL_PROXY_SUPPORT
-#endif
-
-/*
  * Do we have CryptoAPI capability?
  */
-#if defined(WIN32) && defined(ENABLE_CRYPTO) && defined(ENABLE_SSL) && defined(ENABLE_CRYPTO_OPENSSL)
+#if defined(WIN32) && defined(ENABLE_CRYPTO) && defined(ENABLE_CRYPTO_OPENSSL)
 #define ENABLE_CRYPTOAPI
-#endif
-
-/*
- * Enable x509-track feature?
- */
-#if defined(ENABLE_CRYPTO) && defined(ENABLE_SSL) && defined (ENABLE_CRYPTO_OPENSSL)
-#define ENABLE_X509_TRACK
 #endif
 
 /*
@@ -651,15 +650,6 @@ socket_defined (const socket_descriptor_t sd)
 #if 0
 #undef EPOLL
 #define EPOLL 0
-#endif
-
-/*
- * Should we include http proxy override functionality
- */
-#if defined(ENABLE_MANAGEMENT) && defined(ENABLE_HTTP_PROXY)
-#define HTTP_PROXY_OVERRIDE 1
-#else
-#define HTTP_PROXY_OVERRIDE 0
 #endif
 
 /*
@@ -703,19 +693,15 @@ socket_defined (const socket_descriptor_t sd)
 /*
  * Do we support pushing peer info?
  */
-#if defined(ENABLE_CRYPTO) && defined(ENABLE_SSL)
+#if defined(ENABLE_CRYPTO)
 #define ENABLE_PUSH_PEER_INFO
 #endif
 
 /*
- * Do we support internal client-side NAT?
- */
-#define ENABLE_CLIENT_NAT
-
-/*
  * Compression support
  */
-#if defined(ENABLE_SNAPPY) || defined(ENABLE_LZO) || defined(ENABLE_COMP_STUB)
+#if defined(ENABLE_LZO) || defined(ENABLE_LZ4) || \
+    defined(ENABLE_COMP_STUB)
 #define USE_COMP
 #endif
 
