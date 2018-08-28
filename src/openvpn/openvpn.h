@@ -276,7 +276,8 @@ struct context_2
     /*
      * Statistics
      */
-    counter_type tun_read_bytes;
+    //统计信息
+    counter_type tun_read_bytes;//自tun口读到的字节数
     counter_type tun_write_bytes;
     counter_type link_read_bytes;
     counter_type link_read_bytes_auth;
@@ -377,9 +378,9 @@ struct context_2
      * as pointers to the allocated buffers in
      * struct context_buffers.
      */
-    struct buffer buf;
-    struct buffer to_tun;
-    struct buffer to_link;
+    struct buffer buf;//用来缓存读取到的报文（自tun口读，自udp,tcp隧道口读）
+    struct buffer to_tun;//要由tuntap口发送的报文（解密后送application)
+    struct buffer to_link;//要由udp,tcp送出的报文(隧道）
 
     /* should we print R|W|r|w to console on packet transfers? */
     bool log_rw;

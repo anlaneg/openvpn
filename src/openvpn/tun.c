@@ -6223,6 +6223,7 @@ write_tun(struct tuntap *tt, uint8_t *buf, int len)
     return write(tt->fd, buf, len);
 }
 
+//自tun口读取报文
 int
 read_tun(struct tuntap *tt, uint8_t *buf, int len)
 {

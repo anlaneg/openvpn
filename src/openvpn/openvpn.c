@@ -385,6 +385,7 @@ wmain(int argc, wchar_t *wargv[])
 int
 main(int argc, char *argv[])
 {
+	//openvpn入口
     return openvpn_main(argc, argv);
 }
 #endif /* ifdef _WIN32 */

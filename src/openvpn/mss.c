@@ -56,6 +56,7 @@ mss_fixup_ipv4(struct buffer *buf, int maxmss)
     verify_align_4(buf);
     pip = (struct openvpn_iphdr *) BPTR(buf);
 
+    //取ipv4头部长度
     hlen = OPENVPN_IPH_GET_LEN(pip->version_len);
 
     if (pip->protocol == OPENVPN_IPPROTO_TCP
@@ -68,9 +69,11 @@ mss_fixup_ipv4(struct buffer *buf, int maxmss)
         struct buffer newbuf = *buf;
         if (buf_advance(&newbuf, hlen))
         {
+        	//buf_advance使newbuf指向tcp头部，故直接取tcp头部
             struct openvpn_tcphdr *tc = (struct openvpn_tcphdr *) BPTR(&newbuf);
             if (tc->flags & OPENVPN_TCPH_SYN_MASK)
             {
+            	//包含syn标记时，更正mss值
                 mss_fixup_dowork(&newbuf, (uint16_t) maxmss);
             }
         }

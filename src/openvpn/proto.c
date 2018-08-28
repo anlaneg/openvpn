@@ -48,6 +48,7 @@ is_ipv_X( int tunnel_type, struct buffer *buf, int ip_ver )
     verify_align_4(buf);
     if (tunnel_type == DEV_TYPE_TUN)
     {
+    	//tun类型，不包含以太头
         if (BLEN(buf) < (int) sizeof(struct openvpn_iphdr))
         {
             return false;
@@ -56,6 +57,7 @@ is_ipv_X( int tunnel_type, struct buffer *buf, int ip_ver )
     }
     else if (tunnel_type == DEV_TYPE_TAP)
     {
+    	//tap类型，包含以太头
         const struct openvpn_ethhdr *eh;
         if (BLEN(buf) < (int)(sizeof(struct openvpn_ethhdr)
                               + sizeof(struct openvpn_iphdr)))
@@ -65,6 +67,7 @@ is_ipv_X( int tunnel_type, struct buffer *buf, int ip_ver )
         eh = (const struct openvpn_ethhdr *) BPTR(buf);
         if (ntohs(eh->proto) != (ip_ver == 6 ? OPENVPN_ETH_P_IPV6 : OPENVPN_ETH_P_IPV4))
         {
+        	//非指定协议，返回false
             return false;
         }
         offset = sizeof(struct openvpn_ethhdr);
@@ -74,19 +77,23 @@ is_ipv_X( int tunnel_type, struct buffer *buf, int ip_ver )
         return false;
     }
 
+    //指向ip头部
     ih = (const struct openvpn_iphdr *) (BPTR(buf) + offset);
 
     /* IP version is stored in the same bits for IPv4 or IPv6 header */
     if (OPENVPN_IPH_GET_VER(ih->version_len) == ip_ver)
     {
+    	//为对应ip协议，使buf指向对应的ip头部
         return buf_advance(buf, offset);
     }
     else
     {
+    	//非对应的ip协议，返回false
         return false;
     }
 }
 
+//检查是否为ipv4报文，如果是，返回true,并使buf指向ipv4头部，否则返回false
 bool
 is_ipv4(int tunnel_type, struct buffer *buf)
 {

@@ -1103,6 +1103,7 @@ link_socket_write_win32(struct link_socket *sock,
 
 #else  /* ifdef _WIN32 */
 
+//将报文由udp socket送出
 static inline size_t
 link_socket_write_udp_posix(struct link_socket *sock,
                             struct buffer *buf,
@@ -1148,6 +1149,7 @@ link_socket_write_udp(struct link_socket *sock,
 }
 
 /* write a TCP or UDP packet to link */
+//将报文由tcp,udp socket送出
 static inline int
 link_socket_write(struct link_socket *sock,
                   struct buffer *buf,

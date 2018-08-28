@@ -520,6 +520,7 @@ encrypt_sign(struct context *c, bool comp_frag)
     link_socket_get_outgoing_addr(&c->c2.buf, get_link_socket_info(c),
                                   &c->c2.to_link_addr);
 
+    //将加密后的报文，放置在to_link,指定下一步由udp,tcp隧道送出
     /* if null encryption, copy result to read_tun_buf */
     buffer_turnover(orig_buf, &c->c2.to_link, &c->c2.buf, &b->read_tun_buf);
 }
@@ -981,6 +982,7 @@ process_incoming_link_part2(struct context *c, struct link_socket_info *lsi, con
         }
 #endif
 
+        //将报文交给to_tun(下一步送给kernel处理）
         buffer_turnover(orig_buf, &c->c2.to_tun, &c->c2.buf, &c->c2.buffers->read_link_buf);
 
         /* to_tun defined + unopened tuntap can cause deadlock */
@@ -1029,6 +1031,7 @@ read_incoming_tun(struct context *c)
 #else
     ASSERT(buf_init(&c->c2.buf, FRAME_HEADROOM(&c->c2.frame)));
     ASSERT(buf_safe(&c->c2.buf, MAX_RW_SIZE_TUN(&c->c2.frame)));
+    //自tuntap口中读取报文
     c->c2.buf.len = read_tun(c->c1.tuntap, BPTR(&c->c2.buf), MAX_RW_SIZE_TUN(&c->c2.frame));
 #endif
 
@@ -1161,6 +1164,7 @@ process_incoming_tun(struct context *c)
 
     perf_push(PERF_PROC_IN_TUN);
 
+    //统计计数增加
     if (c->c2.buf.len > 0)
     {
         c->c2.tun_read_bytes += c->c2.buf.len;
@@ -1246,6 +1250,7 @@ process_ip_header(struct context *c, unsigned int flags, struct buffer *buf)
             struct buffer ipbuf = *buf;
             if (is_ipv4(TUNNEL_TYPE(c->c1.tuntap), &ipbuf))
             {
+            	//收到ipv4报文
 #if PASSTOS_CAPABILITY
                 /* extract TOS from IP header */
                 if (flags & PIPV4_PASSTOS)
@@ -1796,6 +1801,7 @@ io_wait_dowork(struct context *c, const unsigned int flags)
     dmsg(D_EVENT_WAIT, "I/O WAIT status=0x%04x", c->c2.event_set_status);
 }
 
+//报文处理
 void
 process_io(struct context *c)
 {
@@ -1812,16 +1818,19 @@ process_io(struct context *c)
     /* TCP/UDP port ready to accept write */
     if (status & SOCKET_WRITE)
     {
+    	//经udp,tcp隧道需要发送出去的报文
         process_outgoing_link(c);
     }
     /* TUN device ready to accept write */
     else if (status & TUN_WRITE)
     {
+    	//将解密后的报文自tun口送给kernel,由kernel转交给application
         process_outgoing_tun(c);
     }
     /* Incoming data on TCP/UDP port */
     else if (status & SOCKET_READ)
     {
+    	//由udp,tcp隧道发送过来的报文
         read_incoming_link(c);
         if (!IS_SIG(c))
         {
@@ -1831,9 +1840,12 @@ process_io(struct context *c)
     /* Incoming data on TUN device */
     else if (status & TUN_READ)
     {
+    	//处理tun设备来的报文（这些报文由application经kernel协议栈发送出来，
+    	//我们收到后需要将其加密并沿socket通道将其送给peer设备）
         read_incoming_tun(c);
         if (!IS_SIG(c))
         {
+        	//完成报文加密
             process_incoming_tun(c);
         }
     }

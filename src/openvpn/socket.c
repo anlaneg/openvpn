@@ -875,7 +875,7 @@ link_socket_update_buffer_sizes(struct link_socket *ls, int rcvbuf, int sndbuf)
  * SOCKET INITALIZATION CODE.
  * Create a TCP/UDP socket
  */
-
+//创建tcp socket
 socket_descriptor_t
 create_socket_tcp(struct addrinfo *addrinfo)
 {
