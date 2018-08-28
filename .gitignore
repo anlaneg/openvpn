@@ -72,4 +72,7 @@ config-version.h
 nbproject
 test-driver
 compile
+.cproject
+.project
+.settings/
 stamp-h2
