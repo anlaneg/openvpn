@@ -5,7 +5,7 @@
  *             packet encryption, packet authentication, and
  *             packet compression.
  *
- *  Copyright (C) 2010 Fox Crypto B.V. <openvpn@fox-it.com>
+ *  Copyright (C) 2010-2018 Fox Crypto B.V. <openvpn@fox-it.com>
  *
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -17,10 +17,9 @@
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
- *  You should have received a copy of the GNU General Public License
- *  along with this program (see the file COPYING included with this
- *  distribution); if not, write to the Free Software Foundation, Inc.,
- *  59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *  You should have received a copy of the GNU General Public License along
+ *  with this program; if not, write to the Free Software Foundation, Inc.,
+ *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
 /**
@@ -59,15 +58,13 @@
  *     - \c openvpn_decrypt()
  *
  * @par Settings that control this module's activity
- * Whether or not the Data Channel Crypto module is active depends on the
- * compile-time \c ENABLE_CRYPTO preprocessor macro.  How it processes packets
- * received from the \link data_control Data Channel Control module\endlink at
- * runtime depends on the associated \c crypto_options structure.  To perform
- * cryptographic operations, the \c crypto_options.key_ctx_bi must contain the
- * correct cipher and HMAC security parameters for the direction the packet is
- * traveling in.
+ * How the data channel processes packets received from the \link data_control
+ * Data Channel Control module\endlink at runtime depends on the associated
+ * \c crypto_options structure.  To perform cryptographic operations, the
+ * \c crypto_options.key_ctx_bi must contain the correct cipher and HMAC
+ * security parameters for the direction the packet is traveling in.
  *
  * @par Crypto algorithms
  * This module uses the crypto algorithm implementations of the external
- * crypto library (currently either OpenSSL (default), or PolarSSL).
+ * crypto library (currently either OpenSSL (default), or mbed TLS).
  */

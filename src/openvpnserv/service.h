@@ -5,7 +5,7 @@
  *             packet encryption, packet authentication, and
  *             packet compression.
  *
- *  Copyright (C) 2013 Heiko Hund <heiko.hund@sophos.com>
+ *  Copyright (C) 2013-2018 Heiko Hund <heiko.hund@sophos.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2
@@ -16,10 +16,9 @@
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
- *  You should have received a copy of the GNU General Public License
- *  along with this program (see the file COPYING included with this
- *  distribution); if not, write to the Free Software Foundation, Inc.,
- *  59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *  You should have received a copy of the GNU General Public License along
+ *  with this program; if not, write to the Free Software Foundation, Inc.,
+ *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
 #ifndef _SERVICE_H
@@ -48,45 +47,53 @@
 #define M_ERR     (MSG_FLAGS_ERROR)                    /* error */
 
 typedef enum {
-  automatic,
-  interactive,
-  _service_max
+    automatic,
+    interactive,
+    _service_max
 } openvpn_service_type;
 
 typedef struct {
-  openvpn_service_type type;
-  TCHAR *name;
-  TCHAR *display_name;
-  TCHAR *dependencies;
-  DWORD start_type;
+    openvpn_service_type type;
+    TCHAR *name;
+    TCHAR *display_name;
+    TCHAR *dependencies;
+    DWORD start_type;
 } openvpn_service_t;
 
 #define MAX_NAME 256
 typedef struct {
-  TCHAR exe_path[MAX_PATH];
-  TCHAR config_dir[MAX_PATH];
-  TCHAR ext_string[16];
-  TCHAR log_dir[MAX_PATH];
-  TCHAR ovpn_admin_group[MAX_NAME];
-  DWORD priority;
-  BOOL append;
+    TCHAR exe_path[MAX_PATH];
+    TCHAR config_dir[MAX_PATH];
+    TCHAR ext_string[16];
+    TCHAR log_dir[MAX_PATH];
+    TCHAR ovpn_admin_group[MAX_NAME];
+    DWORD priority;
+    BOOL append;
 } settings_t;
 
 extern openvpn_service_t automatic_service;
 extern openvpn_service_t interactive_service;
+extern LPCTSTR service_instance;
 
+VOID WINAPI ServiceStartAutomaticOwn(DWORD argc, LPTSTR *argv);
+VOID WINAPI ServiceStartAutomatic(DWORD argc, LPTSTR *argv);
 
-VOID WINAPI ServiceStartAutomatic (DWORD argc, LPTSTR *argv);
-VOID WINAPI ServiceStartInteractive (DWORD argc, LPTSTR *argv);
+VOID WINAPI ServiceStartInteractiveOwn(DWORD argc, LPTSTR *argv);
+VOID WINAPI ServiceStartInteractive(DWORD argc, LPTSTR *argv);
 
-int openvpn_vsntprintf (LPTSTR str, size_t size, LPCTSTR format, va_list arglist);
-int openvpn_sntprintf (LPTSTR str, size_t size, LPCTSTR format, ...);
+int openvpn_vsntprintf(LPTSTR str, size_t size, LPCTSTR format, va_list arglist);
 
-DWORD GetOpenvpnSettings (settings_t *s);
+int openvpn_sntprintf(LPTSTR str, size_t size, LPCTSTR format, ...);
 
-BOOL ReportStatusToSCMgr (SERVICE_STATUS_HANDLE service, SERVICE_STATUS *status);
+DWORD GetOpenvpnSettings(settings_t *s);
 
-LPCTSTR GetLastErrorText ();
-DWORD MsgToEventLog (DWORD flags, LPCTSTR lpszMsg, ...);
+BOOL ReportStatusToSCMgr(SERVICE_STATUS_HANDLE service, SERVICE_STATUS *status);
 
-#endif
+LPCTSTR GetLastErrorText();
+
+DWORD MsgToEventLog(DWORD flags, LPCTSTR lpszMsg, ...);
+
+/* Convert a utf8 string to utf16. Caller should free the result */
+wchar_t *utf8to16(const char *utf8);
+
+#endif /* ifndef _SERVICE_H */

@@ -4,7 +4,7 @@ dnl             session authentication and key exchange,
 dnl             packet encryption, packet authentication, and
 dnl             packet compression.
 dnl
-dnl  Copyright (C) 2002-2010 OpenVPN Technologies, Inc. <sales@openvpn.net>
+dnl  Copyright (C) 2002-2018 OpenVPN Inc <sales@openvpn.net>
 dnl  Copyright (C) 2006-2012 Alon Bar-Lev <alon.barlev@gmail.com>
 dnl
 dnl  This program is free software; you can redistribute it and/or modify
@@ -17,10 +17,9 @@ dnl  but WITHOUT ANY WARRANTY; without even the implied warranty of
 dnl  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 dnl  GNU General Public License for more details.
 dnl
-dnl  You should have received a copy of the GNU General Public License
-dnl  along with this program (see the file COPYING included with this
-dnl  distribution); if not, write to the Free Software Foundation, Inc.,
-dnl  59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+dnl  You should have received a copy of the GNU General Public License along
+dnl  with this program; if not, write to the Free Software Foundation, Inc.,
+dnl  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 dnl Process this file with autoconf to produce a configure script.
 
@@ -79,13 +78,6 @@ AC_ARG_ENABLE(comp-stub,
 )
 
 AC_ARG_ENABLE(
-	[crypto],
-	[AS_HELP_STRING([--disable-crypto], [disable crypto support @<:@default=yes@:>@])],
-	,
-	[enable_crypto="yes"]
-)
-
-AC_ARG_ENABLE(
 	[ofb-cfb],
 	[AS_HELP_STRING([--disable-ofb-cfb], [disable support for OFB and CFB cipher modes @<:@default=yes@:>@])],
 	,
@@ -97,13 +89,6 @@ AC_ARG_ENABLE(
 	[AS_HELP_STRING([--enable-x509-alt-username], [enable the --x509-username-field feature @<:@default=no@:>@])],
 	,
 	[enable_x509_alt_username="no"]
-)
-
-AC_ARG_ENABLE(
-	[multi],
-	[AS_HELP_STRING([--disable-multi], [disable client/server support (--mode server + client mode) @<:@default=yes@:>@])],
-	,
-	[enable_multi="yes"]
 )
 
 AC_ARG_ENABLE(
@@ -238,7 +223,7 @@ AC_ARG_ENABLE(
 
 AC_ARG_ENABLE(
 	[werror],
-	[AS_HELP_STRING([--enable-werror], [promote compiler warnings to errors, will cause builds to fail is the compiler issues warnings (debugging option) @<:@default=no@:>@])],
+	[AS_HELP_STRING([--enable-werror], [promote compiler warnings to errors, will cause builds to fail if the compiler issues warnings (debugging option) @<:@default=no@:>@])],
 	,
 	[enable_werror="no"]
 )
@@ -266,8 +251,8 @@ AC_ARG_ENABLE(
 
 AC_ARG_ENABLE(
 	[async-push],
-	[AS_HELP_STRING([--enable-async-push], [enable async-push support @<:@default=no@:>@])],
-	[enable_async_push="yes"],
+	[AS_HELP_STRING([--enable-async-push], [enable async-push support for plugins providing deferred authentication @<:@default=no@:>@])],
+	,
 	[enable_async_push="no"]
 )
 
@@ -301,13 +286,12 @@ AC_ARG_WITH(
 	[with_crypto_library="openssl"]
 )
 
-AC_ARG_WITH(
-	[plugindir],
-	[AS_HELP_STRING([--with-plugindir], [plugin directory @<:@default=LIBDIR/openvpn@:>@])],
-	,
-	[with_plugindir="\$(libdir)/openvpn/plugins"]
-)
-
+AC_ARG_VAR([PLUGINDIR], [Path of plug-in directory @<:@default=LIBDIR/openvpn/plugins@:>@])
+if test -n "${PLUGINDIR}"; then
+	plugindir="${PLUGINDIR}"
+else
+	plugindir="\${libdir}/openvpn/plugins"
+fi
 
 AC_DEFINE_UNQUOTED([TARGET_ALIAS], ["${host}"], [A string representing our host])
 case "$host" in
@@ -378,6 +362,8 @@ AC_ARG_VAR([NETSTAT], [path to netstat utility]) # tests
 AC_ARG_VAR([MAN2HTML], [path to man2html utility])
 AC_ARG_VAR([GIT], [path to git utility])
 AC_ARG_VAR([SYSTEMD_ASK_PASSWORD], [path to systemd-ask-password utility])
+AC_ARG_VAR([SYSTEMD_UNIT_DIR], [Path of systemd unit directory @<:@default=LIBDIR/systemd/system@:>@])
+AC_ARG_VAR([TMPFILES_DIR], [Path of tmpfiles directory @<:@default=LIBDIR/tmpfiles.d@:>@])
 AC_PATH_PROGS([IFCONFIG], [ifconfig],, [$PATH:/usr/local/sbin:/usr/sbin:/sbin])
 AC_PATH_PROGS([ROUTE], [route],, [$PATH:/usr/local/sbin:/usr/sbin:/sbin])
 AC_PATH_PROGS([IPROUTE], [ip],, [$PATH:/usr/local/sbin:/usr/sbin:/sbin])
@@ -435,7 +421,7 @@ AX_EMPTY_ARRAY
 AC_CHECK_SIZEOF([unsigned int])
 AC_CHECK_SIZEOF([unsigned long])
 AC_CHECK_HEADERS([ \
-	stdio.h stdarg.h stdbool.h limits.h \
+	stdio.h stdarg.h limits.h \
 	time.h errno.h fcntl.h io.h direct.h \
 	ctype.h sys/types.h sys/socket.h \
 	signal.h unistd.h dlfcn.h \
@@ -582,6 +568,30 @@ AC_COMPILE_IFELSE(
 	[AC_MSG_RESULT([no])]
 )
 
+saved_LDFLAGS="$LDFLAGS"
+LDFLAGS="$LDFLAGS -Wl,--wrap=exit"
+AC_MSG_CHECKING([linker supports --wrap])
+AC_LINK_IFELSE(
+	[AC_LANG_PROGRAM(
+		[[
+			void exit(int);
+			void __real_exit(int);
+			void __wrap_exit(int i) {
+				__real_exit(i);
+			}
+		]],
+		[[
+			exit(0);
+		]]
+	)],
+	[
+		AC_MSG_RESULT([yes])
+		have_ld_wrap_support=yes
+	],
+	[AC_MSG_RESULT([no])],
+)
+LDFLAGS="$saved_LDFLAGS"
+
 dnl We emulate signals in Windows
 AC_CHECK_DECLS(
 	[SIGHUP],
@@ -638,7 +648,7 @@ AC_FUNC_FORK
 
 AC_CHECK_FUNCS([ \
 	daemon chroot getpwnam setuid nice system getpid dup dup2 \
-	getpass strerror syslog openlog mlockall getgrnam setgid \
+	getpass syslog openlog mlockall getgrnam setgid \
 	setgroups stat flock readv writev time gettimeofday \
 	ctime memset vsnprintf strdup \
 	setsid chdir putenv getpeername unlink \
@@ -826,7 +836,7 @@ PKG_CHECK_MODULES(
 	[]
 )
 
-if test "${enable_crypto}" = "yes" -a "${with_crypto_library}" = "openssl"; then
+if test "${with_crypto_library}" = "openssl"; then
 	AC_ARG_VAR([OPENSSL_CFLAGS], [C compiler flags for OpenSSL])
 	AC_ARG_VAR([OPENSSL_LIBS], [linker flags for OpenSSL])
 
@@ -834,11 +844,10 @@ if test "${enable_crypto}" = "yes" -a "${with_crypto_library}" = "openssl"; then
 		# if the user did not explicitly specify flags, try to autodetect
 		PKG_CHECK_MODULES(
 			[OPENSSL],
-			[libcrypto >= 0.9.8, libssl >= 0.9.8],
-	        [have_openssl="yes"],
-			[have_openssl="no"] # Provide if-not-found to prevent erroring out
+			[openssl >= 1.0.1],
+			[have_openssl="yes"],
+			[] # If this fails, we will do another test next
 		)
-
 		OPENSSL_LIBS=${OPENSSL_LIBS:--lssl -lcrypto}
 	fi
 
@@ -846,6 +855,27 @@ if test "${enable_crypto}" = "yes" -a "${with_crypto_library}" = "openssl"; then
 	saved_LIBS="${LIBS}"
 	CFLAGS="${CFLAGS} ${OPENSSL_CFLAGS}"
 	LIBS="${LIBS} ${OPENSSL_LIBS}"
+
+	# If pkgconfig check failed or OPENSSL_CFLAGS/OPENSSL_LIBS env vars
+	# are used, check the version directly in the OpenSSL include file
+	if test "${have_openssl}" != "yes"; then
+		AC_MSG_CHECKING([additionally if OpenSSL is available and version >= 1.0.1])
+		AC_COMPILE_IFELSE(
+			[AC_LANG_PROGRAM(
+				[[
+#include <openssl/opensslv.h>
+				]],
+				[[
+/*	     Version encoding: MNNFFPPS - see opensslv.h for details */
+#if OPENSSL_VERSION_NUMBER < 0x10001000L
+#error OpenSSL too old
+#endif
+				]]
+			)],
+			[AC_MSG_RESULT([ok])],
+			[AC_MSG_ERROR([OpenSSL version too old])]
+		)
+	fi
 
 	AC_CHECK_FUNCS([SSL_CTX_new EVP_CIPHER_CTX_set_key_length],
 				   ,
@@ -862,6 +892,13 @@ if test "${enable_crypto}" = "yes" -a "${with_crypto_library}" = "openssl"; then
 		,
 		[have_openssl_engine="no"; break]
 	)
+	if test "${have_openssl_engine}" = "no"; then
+		AC_CHECK_DECL( [ENGINE_cleanup], [have_openssl_engine="yes"],,
+			[[
+				#include <openssl/engine.h>
+			]]
+		)
+	fi
 	if test "${have_openssl_engine}" = "yes"; then
 		AC_DEFINE([HAVE_OPENSSL_ENGINE], [1], [OpenSSL engine support available])
 	fi
@@ -873,14 +910,53 @@ if test "${enable_crypto}" = "yes" -a "${with_crypto_library}" = "openssl"; then
 		[have_crypto_aead_modes="no"; break]
 	)
 
+	AC_CHECK_FUNCS(
+		[ \
+			HMAC_CTX_new \
+			HMAC_CTX_free \
+			HMAC_CTX_reset \
+			EVP_MD_CTX_new \
+			EVP_MD_CTX_free \
+			EVP_MD_CTX_reset \
+			OpenSSL_version \
+			SSL_CTX_get_default_passwd_cb \
+			SSL_CTX_get_default_passwd_cb_userdata \
+			SSL_CTX_set_security_level \
+			X509_get0_pubkey \
+			X509_STORE_get0_objects \
+			X509_OBJECT_free \
+			X509_OBJECT_get_type \
+			EVP_PKEY_id \
+			EVP_PKEY_get0_RSA \
+			EVP_PKEY_get0_DSA \
+			EVP_PKEY_get0_EC_KEY \
+			RSA_set_flags \
+			RSA_bits \
+			RSA_get0_key \
+			RSA_set0_key \
+			DSA_get0_pqg \
+			DSA_bits \
+			RSA_meth_new \
+			RSA_meth_free \
+			RSA_meth_set_pub_enc \
+			RSA_meth_set_pub_dec \
+			RSA_meth_set_priv_enc \
+			RSA_meth_set_priv_dec \
+			RSA_meth_set_init \
+			RSA_meth_set_finish \
+			RSA_meth_set0_app_data \
+			RSA_meth_get0_app_data \
+			EC_GROUP_order_bits
+		]
+	)
+
 	CFLAGS="${saved_CFLAGS}"
 	LIBS="${saved_LIBS}"
 
-	have_crypto="yes"
 	AC_DEFINE([ENABLE_CRYPTO_OPENSSL], [1], [Use OpenSSL library])
 	CRYPTO_CFLAGS="${OPENSSL_CFLAGS}"
 	CRYPTO_LIBS="${OPENSSL_LIBS}"
-elif test "${enable_crypto}" = "yes" -a "${with_crypto_library}" = "mbedtls"; then
+elif test "${with_crypto_library}" = "mbedtls"; then
 	AC_ARG_VAR([MBEDTLS_CFLAGS], [C compiler flags for mbedtls])
 	AC_ARG_VAR([MBEDTLS_LIBS], [linker flags for mbedtls])
 
@@ -959,11 +1035,10 @@ elif test "${enable_crypto}" = "yes" -a "${with_crypto_library}" = "mbedtls"; th
 
 	CFLAGS="${saved_CFLAGS}"
 	LIBS="${saved_LIBS}"
-	have_crypto="yes"
 	AC_DEFINE([ENABLE_CRYPTO_MBEDTLS], [1], [Use mbed TLS library])
 	CRYPTO_CFLAGS="${MBEDTLS_CFLAGS}"
 	CRYPTO_LIBS="${MBEDTLS_LIBS}"
-elif test "${enable_crypto}" = "yes"; then
+else
 	AC_MSG_ERROR([Invalid crypto library: ${with_crypto_library}])
 fi
 
@@ -1014,37 +1089,73 @@ dnl
 AC_ARG_VAR([LZ4_CFLAGS], [C compiler flags for lz4])
 AC_ARG_VAR([LZ4_LIBS], [linker flags for lz4])
 if test "$enable_lz4" = "yes" && test "$enable_comp_stub" = "no"; then
-    AC_CHECKING([for LZ4 Library and Header files])
-    havelz4lib=1
-
-    # if LZ4_LIBS is set, we assume it will work, otherwise test
-    if test -z "${LZ4_LIBS}"; then
-	AC_CHECK_LIB(lz4, LZ4_compress,
-	    [ LZ4_LIBS="-llz4" ],
-	    [
-	        AC_MSG_RESULT([LZ4 library not found.])
-	        havelz4lib=0
-	    ])
+    if test -z "${LZ4_CFLAGS}" -a -z "${LZ4_LIBS}"; then
+	# if the user did not explicitly specify flags, try to autodetect
+	PKG_CHECK_MODULES([LZ4],
+			  [liblz4 >= 1.7.1 liblz4 < 100],
+			  [have_lz4="yes"],
+			  [LZ4_LIBS="-llz4"] # If this fails, we will do another test next.
+					     # We also add set LZ4_LIBS otherwise the
+					     # linker will not know about the lz4 library
+	)
     fi
 
     saved_CFLAGS="${CFLAGS}"
+    saved_LIBS="${LIBS}"
     CFLAGS="${CFLAGS} ${LZ4_CFLAGS}"
-    AC_CHECK_HEADERS(lz4.h,
-       ,
-       [
-	   AC_MSG_RESULT([LZ4 headers not found.])
-	   havelz4lib=0
-       ])
+    LIBS="${LIBS} ${LZ4_LIBS}"
 
-    if test $havelz4lib = 0 ; then
-	AC_MSG_RESULT([LZ4 library or header not found, using version in src/compat/compat-lz4.*])
+    # If pkgconfig check failed or LZ4_CFLAGS/LZ4_LIBS env vars
+    # are used, check the version directly in the LZ4 include file
+    if test "${have_lz4}" != "yes"; then
+	AC_CHECK_HEADERS([lz4.h],
+			 [have_lz4h="yes"],
+			 [])
+
+	if test "${have_lz4h}" = "yes" ; then
+	    AC_MSG_CHECKING([additionally if system LZ4 version >= 1.7.1])
+	    AC_COMPILE_IFELSE(
+		[AC_LANG_PROGRAM([[
+#include <lz4.h>
+				 ]],
+				 [[
+/* Version encoding: MMNNPP (Major miNor Patch) - see lz4.h for details */
+#if LZ4_VERSION_NUMBER < 10701L
+#error LZ4 is too old
+#endif
+				 ]]
+				)],
+		[
+		    AC_MSG_RESULT([ok])
+		    have_lz4="yes"
+		],
+		[AC_MSG_RESULT([system LZ4 library is too old])]
+	    )
+	fi
+    fi
+
+    # Double check we have a few needed functions
+    if test "${have_lz4}" = "yes" ; then
+	AC_CHECK_LIB([lz4],
+		     [LZ4_compress_default],
+		     [],
+		     [have_lz4="no"])
+	AC_CHECK_LIB([lz4],
+		     [LZ4_decompress_safe],
+		     [],
+		     [have_lz4="no"])
+    fi
+
+    if test "${have_lz4}" != "yes" ; then
+	AC_MSG_RESULT([		usable LZ4 library or header not found, using version in src/compat/compat-lz4.*])
 	AC_DEFINE([NEED_COMPAT_LZ4], [1], [use copy of LZ4 source in compat/])
 	LZ4_LIBS=""
     fi
     OPTIONAL_LZ4_CFLAGS="${LZ4_CFLAGS}"
     OPTIONAL_LZ4_LIBS="${LZ4_LIBS}"
-    AC_DEFINE(ENABLE_LZ4, 1, [Enable LZ4 compression library])
+    AC_DEFINE(ENABLE_LZ4, [1], [Enable LZ4 compression library])
     CFLAGS="${saved_CFLAGS}"
+    LIBS="${saved_LIBS}"
 fi
 
 
@@ -1075,6 +1186,18 @@ if test "$enable_systemd" = "yes" ; then
     OPTIONAL_SYSTEMD_LIBS="${libsystemd_LIBS}"
     AC_DEFINE(ENABLE_SYSTEMD, 1, [Enable systemd integration])
     LIBS="${saved_LIBS}"
+
+    if test -n "${SYSTEMD_UNIT_DIR}"; then
+        systemdunitdir="${SYSTEMD_UNIT_DIR}"
+    else
+        systemdunitdir="\${libdir}/systemd/system"
+    fi
+
+    if test -n "${TMPFILES_DIR}"; then
+        tmpfilesdir="${TMPFILES_DIR}"
+    else
+        tmpfilesdir="\${libdir}/tmpfiles.d"
+    fi
 fi
 
 
@@ -1104,7 +1227,6 @@ if test "${enable_x509_alt_username}" = "yes"; then
 fi
 
 test "${ac_cv_header_sys_uio_h}" = "yes" && AC_DEFINE([HAVE_IOVEC], [1], [struct iovec needed for IPv6 support])
-test "${enable_multi}" = "yes" && AC_DEFINE([ENABLE_CLIENT_SERVER], [1], [Enable client/server capability])
 test "${enable_server}" = "no" && AC_DEFINE([ENABLE_CLIENT_ONLY], [1], [Enable client capability only])
 test "${enable_management}" = "yes" && AC_DEFINE([ENABLE_MANAGEMENT], [1], [Enable management server capability])
 test "${enable_multihome}" = "yes" && AC_DEFINE([ENABLE_MULTIHOME], [1], [Enable multi-homed UDP server capability])
@@ -1116,14 +1238,10 @@ test "${enable_def_auth}" = "yes" && AC_DEFINE([ENABLE_DEF_AUTH], [1], [Enable d
 test "${enable_pf}" = "yes" && AC_DEFINE([ENABLE_PF], [1], [Enable internal packet filter])
 test "${enable_strict_options}" = "yes" && AC_DEFINE([ENABLE_STRICT_OPTIONS_CHECK], [1], [Enable strict options check between peers])
 
-if test "${enable_crypto}" = "yes"; then
-	test "${have_crypto}" != "yes" && AC_MSG_ERROR([${with_crypto_library} crypto is required but missing])
-	test "${enable_crypto_ofb_cfb}" = "yes" && AC_DEFINE([ENABLE_OFB_CFB_MODE], [1], [Enable OFB and CFB cipher modes])
-	test "${have_crypto_aead_modes}" = "yes" && AC_DEFINE([HAVE_AEAD_CIPHER_MODES], [1], [Use crypto library])
-	OPTIONAL_CRYPTO_CFLAGS="${OPTIONAL_CRYPTO_CFLAGS} ${CRYPTO_CFLAGS}"
-	OPTIONAL_CRYPTO_LIBS="${OPTIONAL_CRYPTO_LIBS} ${CRYPTO_LIBS}"
-	AC_DEFINE([ENABLE_CRYPTO], [1], [Enable crypto library])
-fi
+test "${enable_crypto_ofb_cfb}" = "yes" && AC_DEFINE([ENABLE_OFB_CFB_MODE], [1], [Enable OFB and CFB cipher modes])
+test "${have_crypto_aead_modes}" = "yes" && AC_DEFINE([HAVE_AEAD_CIPHER_MODES], [1], [Use crypto library])
+OPTIONAL_CRYPTO_CFLAGS="${OPTIONAL_CRYPTO_CFLAGS} ${CRYPTO_CFLAGS}"
+OPTIONAL_CRYPTO_LIBS="${OPTIONAL_CRYPTO_LIBS} ${CRYPTO_LIBS}"
 
 if test "${enable_plugins}" = "yes"; then
 	OPTIONAL_DL_LIBS="${DL_LIBS}"
@@ -1163,7 +1281,6 @@ fi
 
 if test "${enable_pkcs11}" = "yes"; then
 	test "${have_pkcs11_helper}" != "yes" && AC_MSG_ERROR([PKCS11 enabled but libpkcs11-helper is missing])
-	test "${enable_crypto}" != "yes" && AC_MSG_ERROR([PKCS11 can be enabled only if crypto is enabled])
 	OPTIONAL_PKCS11_HELPER_CFLAGS="${PKCS11_HELPER_CFLAGS}"
 	OPTIONAL_PKCS11_HELPER_LIBS="${PKCS11_HELPER_LIBS}"
 	AC_DEFINE([ENABLE_PKCS11], [1], [Enable PKCS11])
@@ -1176,13 +1293,25 @@ if test "${enable_pkcs11}" = "yes"; then
 	)
 fi
 
+AC_DEFUN([ACL_CHECK_ADD_COMPILE_FLAGS], [
+    old_cflags="$CFLAGS"
+    CFLAGS="$1 $CFLAGS"
+    AC_MSG_CHECKING([whether the compiler acceppts $1])
+    AC_COMPILE_IFELSE([AC_LANG_PROGRAM()], [AC_MSG_RESULT([yes])],
+        [AC_MSG_RESULT([no]); CFLAGS="$old_cflags"])]
+)
+
+ACL_CHECK_ADD_COMPILE_FLAGS([-Wno-unused-function])
+ACL_CHECK_ADD_COMPILE_FLAGS([-Wno-unused-parameter])
+ACL_CHECK_ADD_COMPILE_FLAGS([-Wall])
+
 if test "${enable_pedantic}" = "yes"; then
 	enable_strict="yes"
 	CFLAGS="${CFLAGS} -pedantic"
 	AC_DEFINE([PEDANTIC], [1], [Enable pedantic mode])
 fi
 if test "${enable_strict}" = "yes"; then
-	CFLAGS="${CFLAGS} -Wall -Wno-unused-parameter -Wno-unused-function"
+	CFLAGS="${CFLAGS} -Wsign-compare -Wuninitialized"
 fi
 if test "${enable_werror}" = "yes"; then
 	CFLAGS="${CFLAGS} -Werror"
@@ -1243,12 +1372,14 @@ AM_CONDITIONAL([WIN32], [test "${WIN32}" = "yes"])
 AM_CONDITIONAL([GIT_CHECKOUT], [test "${GIT_CHECKOUT}" = "yes"])
 AM_CONDITIONAL([ENABLE_PLUGIN_AUTH_PAM], [test "${enable_plugin_auth_pam}" = "yes"])
 AM_CONDITIONAL([ENABLE_PLUGIN_DOWN_ROOT], [test "${enable_plugin_down_root}" = "yes"])
-AM_CONDITIONAL([ENABLE_CRYPTO], [test "${enable_crypto}" = "yes"])
+AM_CONDITIONAL([HAVE_LD_WRAP_SUPPORT], [test "${have_ld_wrap_support}" = "yes"])
 
-plugindir="${with_plugindir}"
 sampledir="\$(docdir)/sample"
 AC_SUBST([plugindir])
 AC_SUBST([sampledir])
+
+AC_SUBST([systemdunitdir])
+AC_SUBST([tmpfilesdir])
 
 VENDOR_SRC_ROOT="\$(abs_top_srcdir)/vendor/"
 VENDOR_DIST_ROOT="\$(abs_top_builddir)/vendor/dist"
@@ -1288,6 +1419,10 @@ AC_CONFIG_FILES([
 	distro/Makefile
 	distro/rpm/Makefile
 	distro/rpm/openvpn.spec
+	distro/systemd/Makefile
+	doc/Makefile
+	doc/doxygen/Makefile
+	doc/doxygen/openvpn.doxyfile
 	include/Makefile
 	src/Makefile
 	src/compat/Makefile
@@ -1304,7 +1439,6 @@ AC_CONFIG_FILES([
         tests/unit_tests/plugins/auth-pam/Makefile
         vendor/Makefile
 	sample/Makefile
-	doc/Makefile
 ])
 AC_CONFIG_FILES([tests/t_client.sh], [chmod +x tests/t_client.sh])
 AC_OUTPUT

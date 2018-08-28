@@ -5,8 +5,8 @@
  *             packet encryption, packet authentication, and
  *             packet compression.
  *
- *  Copyright (C) 2002-2010 OpenVPN Technologies, Inc. <sales@openvpn.net>
- *  Copyright (C) 2010 Fox Crypto B.V. <openvpn@fox-it.com>
+ *  Copyright (C) 2002-2018 OpenVPN Inc <sales@openvpn.net>
+ *  Copyright (C) 2010-2018 Fox Crypto B.V. <openvpn@fox-it.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2
@@ -17,10 +17,9 @@
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
- *  You should have received a copy of the GNU General Public License
- *  along with this program (see the file COPYING included with this
- *  distribution); if not, write to the Free Software Foundation, Inc.,
- *  59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *  You should have received a copy of the GNU General Public License along
+ *  with this program; if not, write to the Free Software Foundation, Inc.,
+ *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
 /**
@@ -65,26 +64,30 @@ typedef struct {
  * Either \c priv_key_pkcs11 or \c priv_key must be filled in.
  */
 struct tls_root_ctx {
-    bool initialised; 		/**< True if the context has been initialised */
+    bool initialised;           /**< True if the context has been initialised */
 
-    int endpoint; 		/**< Whether or not this is a server or a client */
+    int endpoint;               /**< Whether or not this is a server or a client */
 
-    mbedtls_dhm_context *dhm_ctx;	/**< Diffie-Helmann-Merkle context */
-    mbedtls_x509_crt *crt_chain;	/**< Local Certificate chain */
-    mbedtls_x509_crt *ca_chain;		/**< CA chain for remote verification */
-    mbedtls_pk_context *priv_key;	/**< Local private key */
+    mbedtls_dhm_context *dhm_ctx;       /**< Diffie-Helmann-Merkle context */
+    mbedtls_x509_crt *crt_chain;        /**< Local Certificate chain */
+    mbedtls_x509_crt *ca_chain;         /**< CA chain for remote verification */
+    mbedtls_pk_context *priv_key;       /**< Local private key */
+    mbedtls_x509_crl *crl;              /**< Certificate Revocation List */
+    time_t crl_last_mtime;              /**< CRL last modification time */
+    off_t crl_last_size;                /**< size of last loaded CRL */
 #if defined(ENABLE_PKCS11)
-    mbedtls_pkcs11_context *priv_key_pkcs11;	/**< PKCS11 private key */
+    mbedtls_pkcs11_context *priv_key_pkcs11;    /**< PKCS11 private key */
 #endif
 #ifdef MANAGMENT_EXTERNAL_KEY
     struct external_context *external_key; /**< Management external key */
 #endif
-    int * allowed_ciphers;	/**< List of allowed ciphers for this connection */
+    int *allowed_ciphers;       /**< List of allowed ciphers for this connection */
+    mbedtls_x509_crt_profile cert_profile; /**< Allowed certificate types */
 };
 
 struct key_state_ssl {
-    mbedtls_ssl_config ssl_config;	/**< mbedTLS global ssl config */
-    mbedtls_ssl_context *ctx;		/**< mbedTLS connection context */
+    mbedtls_ssl_config ssl_config;      /**< mbedTLS global ssl config */
+    mbedtls_ssl_context *ctx;           /**< mbedTLS connection context */
     bio_ctx bio_ctx;
 };
 

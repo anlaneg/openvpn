@@ -1,5 +1,173 @@
 OpenVPN Change Log
-Copyright (C) 2002-2016 OpenVPN Technologies, Inc. <sales@openvpn.net>
+Copyright (C) 2002-2018 OpenVPN Inc <sales@openvpn.net>
+
+2016.12.16 -- Version 2.4_rc2
+David Sommerseth (9):
+      Fix wrong configure.ac parsing of --enable-async-push
+      Changes: Further improve systemd unit file updates
+      systemd: Intermediate --chroot fix with the new sd_notify() implementation
+      Further enhance async-push feature description
+      Changes.rst: Mainatiner update on C99
+      dev-tools: Add reformat-all.sh for code style unification
+      The Great Reformatting - first phase
+      Merge 'reformatting' branch into master
+      auth-gen-token: Hardening memory cleanup on auth-token failuers
+
+Gert Doering (1):
+      Refactor setting close-on-exec for socket FDs
+
+Lev Stipakov (2):
+      Arm inotify only in server mode
+      Add "async push" feature to Changes.rst
+
+Magnus Kroken (1):
+      mbedtls: include correct net/net_sockets header according to version
+
+Selva Nair (2):
+      Correctly state the default dhcp server address in man page
+      Unhide a line in man page by fixing a typo
+
+Steffan Karger (4):
+      Fix (and cleanup) crypto flags in combination with NCP
+      Deprecate --no-iv
+      man: mention that --ecdh-curve does not work on mbed TLS builds
+      Don't reopen tun if cipher changes
+
+
+2016.12.01 -- Version 2.4_rc1
+Antonio Quartulli (1):
+      reload CRL only if file was modified
+
+Christian Hesse (3):
+      update year in copyright message
+      Use systemd service manager notification
+      Refuse to daemonize when running from systemd
+
+Gert Doering (1):
+      Fix windows path in Changes.rst
+
+Samuli Seppänen (1):
+      Mention that OpenVPN 2.4 requires Windows Vista or higher
+
+Selva Nair (4):
+      Map restart signals from event loop to SIGTERM during exit-notification wait
+      When parsing '--setenv opt xx ..' make sure a third parameter is present
+      Force 'def1' method when --redirect-gateway is done through service
+      Do not restart dns client service as a part of --register-dns processing
+
+Steffan Karger (4):
+      tls_process: don't set variable that's never read
+      Unconditionally enable TLS_AGGREGATE_ACK
+      Clean up format_hex_ex()
+      Introduce and use secure_memzero() to erase secrets
+
+
+2016.11.24 -- Version 2.4_beta2
+Arne Schwabe (5):
+      Document that tls-crypt also supports inline
+      Fix warning that RAND_bytes is undeclared
+      Remove compat-stdbool.h.
+      Fix various compiler warnings
+      Handle DNS6 option on Android
+
+David Sommerseth (2):
+      Changes.rst: Fixing wrong formatting
+      Document the --auth-token option
+
+Gert Doering (2):
+      Remove remaining traces of compat-stdbool.h
+      Stub implementation of "--dhcp-option DNS6 <v6addr>"
+
+Selva Nair (3):
+      Do not set ipv6 address if '--ip-win32 manual' is used
+      Handle --dhcp-option DNS6 on Windows using netsh
+      Set IPv6 DNS servers using interactive service
+
+Steffan Karger (6):
+      multi_process_float: revert part of c14c4a9e
+      --tls-crypt fixes
+      Change cmocka remote to use https in stead of git protocol
+      generate_key_expansion: make assumption explicit, use C99 features
+      Poor man's NCP for non-NCP peers
+      Refactor data channel key generation API
+
+
+2016.11.17 -- Version 2.4_beta1
+Arne Schwabe (1):
+      Make Changes.rst nicer for 2.4 release
+
+David Sommerseth (16):
+      Update .mailmap to unify and clean up odd names and e-mail addresses
+      cleanup: Remove NOP code sections in ssl.c:tls_process()
+      Remove last rest of INSTALL-win32.txt references
+      auth-gen-token: Add --auth-gen-token option
+      auth-gen-token: Generate an auth-token per client
+      auth-gen-token: Push generated auth-tokens to the client
+      auth-gen-token: Authenticate generated auth-tokens when client re-authenticates
+      Fix builds with --disable-crypto
+      man: Improve the --keepalive section
+      console: Fix compiler warning
+      systemd: Improve the systemd unit files
+      tun: Fix compiler warnings
+      file checks: Merge warn_if_group_others_accessible() into check_file_access()
+      tun: Fix weird commit error causing a double assignment
+      options: Remove --tls-remote
+      Remove unused variable in argv_printf_arglist()
+
+Gert Doering (10):
+      openvpn version line: remove [IPv6], add [AEAD] if available
+      clean up *sig_info handling in link_socket_init_phase2()
+      check c->c2.link_socket before calling do_init_route_ipv6_list()
+      Check previously-unchecked buf_alloc_write() call in crypto self-test.
+      Fix potential division by zero in shaper_reset()
+      Repair topology subnet on FreeBSD 11
+      Repair topology subnet on OpenBSD
+      Add in_port_t check to configure.ac
+      Fix compilation on MinGW with -std=c99
+      Replace WIN32 by _WIN32
+
+Heiko Hund (4):
+      put argv_* functions into own file, add unit tests
+      Remove unused and unecessary argv interfaces
+      remove unused system_str from struct argv
+      Factor out %sc handling from argv_printf()
+
+Lev Stipakov (1):
+      Drop recursively routed packets
+
+Samuli Seppänen (6):
+      Remove INSTALL-win32.txt that is now hosted in openvpn-build
+      Fix update_t_client_ips.sh for out of tree builds
+      Make sure that all relevant files under test go to release tarballs
+      Allow passing extra arguments to fping/fping6 in t_client.rc
+      Prevent generation of duplicate EXPECT_IFCONFIG entries
+      Fix a logic problem in handling of --up scripts in t_client.sh
+
+Selva Nair (2):
+      Support --block-outside-dns on multiple tunnels
+      Unbreak windows build
+
+Steffan Karger (19):
+      Fix use-after-free bug in prepare_push_reply()
+      Remove verbose msg() from send_push_reply()
+      Limit --reneg-bytes to 64MB when using small block ciphers
+      Add a revoked cert to the sample keys
+      Fix --tls-version-max in mbed TLS builds
+      Don't deference type-punned pointers
+      Fix builds on compilers without anonymous union support
+      Refactor static/tls-auth key loading
+      Add missing includes in error.h
+      Make argv unit tests obey {MBEDTLS, OPENSSL}_{LIBS, CFLAGS}
+      Move private file access checks to options_postprocess_filechecks()
+      Deprecate key-method 1
+      Refactor CRL handling
+      Remove unneeded check for extra_certs_file_inline
+      Fix missing return value checks in multi_process_float()
+      Restore pre-NCP cipher options on SIGUSR1
+      Remove unused variables from do_init_crypto_static()
+      Add control channel encryption (--tls-crypt)
+      Add --tls-crypt unit tests
+
 
 2016.10.19 -- Version 2.4_alpha2
 
@@ -525,7 +693,7 @@ Robert Fischer (1):
 Samuel Thibault (1):
       Ensure that client-connect files are always deleted
 
-Samuli Sepp�nen (15):
+Samuli Seppänen (15):
       Removed ChangeLog.IPv6
       Added cross-compilation information INSTALL-win32.txt
       Updated README
